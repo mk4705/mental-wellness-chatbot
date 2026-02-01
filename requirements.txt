@@ -1,8 +1,11 @@
+--extra-index-url https://download.pytorch.org/whl/cpu
+
 Django>=4.2
 gunicorn
-psycopg2-binary
-dj-database-url
 groq
 faiss-cpu
-sentence-transformers
+sentence-transformers==2.7.0
+torch==2.1.2+cpu
 python-dotenv
+dj-database-url
+psycopg2-binary
