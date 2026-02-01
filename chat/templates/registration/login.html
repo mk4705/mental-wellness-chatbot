@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>Login | Mental Wellness</title>
+<style>
+body {
+    margin: 0;
+    height: 100vh;
+    background: linear-gradient(135deg, #eef2ff, #f0fdf4);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: system-ui;
+}
+
+.card {
+    width: 380px;
+    padding: 32px;
+    background: rgba(255,255,255,0.85);
+    backdrop-filter: blur(12px);
+    border-radius: 18px;
+    box-shadow: 0 30px 60px rgba(0,0,0,0.1);
+}
+
+h2 {
+    text-align: center;
+    margin-bottom: 22px;
+    color: #1f2937;
+}
+
+input {
+    width: 100%;
+    padding: 12px;
+    border-radius: 10px;
+    border: 1px solid #d1d5db;
+    margin-bottom: 16px;
+}
+
+button {
+    width: 100%;
+    padding: 12px;
+    background: linear-gradient(135deg, #6366f1, #4f46e5);
+    color: white;
+    border: none;
+    border-radius: 10px;
+    font-weight: 500;
+}
+
+.footer {
+    text-align: center;
+    margin-top: 16px;
+    font-size: 14px;
+}
+
+a { color: #4f46e5; text-decoration: none; }
+</style>
+</head>
+
+<body>
+<div class="card">
+    <h2>Welcome Back</h2>
+    <form method="post">
+        {% csrf_token %}
+        {{ form.as_p }}
+        <button>Login</button>
+    </form>
+    <div class="footer">
+        New here? <a href="/signup/">Create an account</a>
+    </div>
+</div>
+</body>
+</html>

@@ -1,0 +1,283 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<title>Mental Wellness Chat</title>
+
+<style>
+* { box-sizing: border-box; }
+
+/* =======================
+   THEME VARIABLES
+======================= */
+:root {
+    --bg-main: radial-gradient(circle at top left, #e0e7ff, transparent 40%),
+               radial-gradient(circle at bottom right, #f0fdf4, transparent 40%),
+               linear-gradient(135deg, #eef2ff, #f8fafc);
+    --panel-bg: rgba(255,255,255,0.75);
+    --panel-border: rgba(0,0,0,0.05);
+    --text-main: #1f2937;
+    --accent: #4f46e5;
+    --user-bubble: linear-gradient(135deg, #6366f1, #4f46e5);
+    --bot-bubble: rgba(255,255,255,0.9);
+}
+
+/* 🌙 DARK MODE */
+[data-theme="dark"] {
+    --bg-main: linear-gradient(135deg, #020617, #0f172a);
+    --panel-bg: rgba(15,23,42,0.9);
+    --panel-border: rgba(255,255,255,0.08);
+    --text-main: #e5e7eb;
+    --accent: #a5b4fc;
+    --user-bubble: linear-gradient(135deg, #6366f1, #4338ca);
+    --bot-bubble: rgba(30,41,59,0.95);
+}
+
+/* =======================
+   BASE
+======================= */
+body {
+    margin: 0;
+    height: 100vh;
+    font-family: system-ui, -apple-system, BlinkMacSystemFont;
+    background: var(--bg-main);
+    color: var(--text-main);
+}
+
+/* ===== APP LAYOUT ===== */
+.app-container {
+    height: 100vh;
+    display: flex;
+}
+
+/* ===== SIDEBAR ===== */
+.sidebar {
+    width: 260px;
+    background: var(--panel-bg);
+    backdrop-filter: blur(12px);
+    border-right: 1px solid var(--panel-border);
+    padding: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+}
+
+.new-chat-btn {
+    padding: 10px;
+    text-align: center;
+    border-radius: 10px;
+    background: rgba(79,70,229,0.12);
+    color: var(--accent);
+    text-decoration: none;
+    font-weight: 500;
+}
+
+.chat-history {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    overflow-y: auto;
+}
+
+.chat-link {
+    padding: 10px 14px;
+    border-radius: 10px;
+    text-decoration: none;
+    font-size: 14px;
+    color: var(--text-main);
+    background: rgba(255,255,255,0.4);
+}
+
+.chat-link.active {
+    background: rgba(99,102,241,0.2);
+    color: var(--accent);
+    font-weight: 600;
+}
+
+/* ===== MAIN ===== */
+.main-content {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+}
+
+/* ===== TOP BAR ===== */
+.top-bar {
+    height: 56px;
+    padding: 0 24px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: var(--panel-bg);
+    backdrop-filter: blur(10px);
+    border-bottom: 1px solid var(--panel-border);
+}
+
+.top-actions {
+    display: flex;
+    gap: 14px;
+    align-items: center;
+}
+
+.toggle-btn,
+.logout-form button {
+    background: none;
+    border: none;
+    cursor: pointer;
+    color: var(--accent);
+    font-size: 16px;
+}
+
+/* ===== CHAT AREA ===== */
+.chat-area {
+    flex: 1;
+    overflow-y: auto;
+    padding: 40px 24px;
+    display: flex;
+    flex-direction: column;
+    gap: 22px;
+}
+
+.message {
+    max-width: 720px;
+    padding: 16px 20px;
+    border-radius: 18px;
+    line-height: 1.6;
+    font-size: 15px;
+    animation: fadeIn 0.25s ease;
+    white-space: pre-wrap;
+}
+
+.user {
+    align-self: flex-end;
+    background: var(--user-bubble);
+    color: white;
+    border-bottom-right-radius: 6px;
+}
+
+.bot {
+    align-self: flex-start;
+    background: var(--bot-bubble);
+    color: var(--text-main);
+    border-bottom-left-radius: 6px;
+}
+
+/* ===== INPUT ===== */
+.input-bar {
+    padding: 20px;
+    background: var(--panel-bg);
+    backdrop-filter: blur(10px);
+    border-top: 1px solid var(--panel-border);
+}
+
+.input-form {
+    max-width: 760px;
+    margin: auto;
+    display: flex;
+    gap: 12px;
+}
+
+.input-form input {
+    flex: 1;
+    padding: 14px 18px;
+    border-radius: 999px;
+    border: none;
+    font-size: 15px;
+}
+
+.input-form button {
+    padding: 14px 22px;
+    border-radius: 999px;
+    border: none;
+    background: var(--user-bubble);
+    color: white;
+    cursor: pointer;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(6px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+</style>
+</head>
+
+<body>
+
+<div class="app-container">
+
+    <!-- SIDEBAR -->
+    <aside class="sidebar">
+        <a href="{% url 'new_chat' %}" class="new-chat-btn">+ New Chat</a>
+
+        <div class="chat-history">
+            {% for s in sessions %}
+            <div style="display:flex; align-items:center; gap:6px;">
+                <a href="{% url 'chat_page' s.id %}"
+                   class="chat-link {% if s.id == active_session.id %}active{% endif %}">
+                    {{ s.title }}
+                </a>
+                <form method="post" action="{% url 'delete_chat' s.id %}">
+                    {% csrf_token %}
+                    <button class="toggle-btn">🗑️</button>
+                </form>
+            </div>
+            {% endfor %}
+        </div>
+    </aside>
+
+    <!-- MAIN -->
+    <div class="main-content">
+
+        <header class="top-bar">
+            <h3>Mental Wellness Assistant</h3>
+            <div class="top-actions">
+                <button class="toggle-btn" onclick="toggleTheme()">🌙</button>
+                <form method="post" action="{% url 'logout' %}" class="logout-form">
+                    {% csrf_token %}
+                    <button type="submit">Logout</button>
+                </form>
+            </div>
+        </header>
+
+        <main class="chat-area" id="chat-area">
+            {% for msg in messages %}
+            <div class="message {{ msg.role }}">
+                {{ msg.content }}
+            </div>
+            {% endfor %}
+        </main>
+
+        <footer class="input-bar">
+            <form method="post" class="input-form">
+                {% csrf_token %}
+                <input name="message" placeholder="Type your thoughts..." required>
+                <button>Send</button>
+            </form>
+        </footer>
+
+    </div>
+</div>
+
+<script>
+const chatArea = document.getElementById("chat-area");
+chatArea.scrollTop = chatArea.scrollHeight;
+
+function toggleTheme() {
+    const body = document.body;
+    const theme = body.getAttribute("data-theme");
+    if (theme === "dark") {
+        body.removeAttribute("data-theme");
+        localStorage.setItem("theme", "light");
+    } else {
+        body.setAttribute("data-theme", "dark");
+        localStorage.setItem("theme", "dark");
+    }
+}
+
+// Load saved theme
+if (localStorage.getItem("theme") === "dark") {
+    document.body.setAttribute("data-theme", "dark");
+}
+</script>
+
+</body>
+</html>
