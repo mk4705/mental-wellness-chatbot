@@ -1,1 +1,1 @@
-web: gunicorn wellness_bot.wsgi
+web: gunicorn wellness_bot.wsgi --log-file -
