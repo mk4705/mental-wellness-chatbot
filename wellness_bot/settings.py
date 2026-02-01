@@ -11,6 +11,8 @@ import dj_database_url
 # ======================
 BASE_DIR = Path(__file__).resolve().parent.parent
 
+STATIC_URL = "/static/"
+STATIC_ROOT = BASE_DIR / "staticfiles"
 
 # ======================
 # SECURITY
@@ -22,7 +24,7 @@ SECRET_KEY = os.getenv(
 
 DEBUG = os.getenv("DEBUG", "False") == "True"
 
-ALLOWED_HOSTS = ["*"]  # OK for demo / interviews
+ALLOWED_HOSTS = ["*"]
 
 
 # ======================
