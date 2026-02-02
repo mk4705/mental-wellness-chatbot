@@ -2,11 +2,10 @@ from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
 from django.views.decorators.http import require_POST
 import os
-import time
 
 from .models import ChatSession, ChatMessage
 
-# 🔹 Lazy Groq client (IMPORTANT)
+# 🔹 Lazy Groq client (safe on Render)
 _groq_client = None
 
 
@@ -19,9 +18,6 @@ def get_groq_client():
         from groq import Groq
         _groq_client = Groq(api_key=api_key)
     return _groq_client
-
-
-MAX_RAG_SECONDS = 1.5  # HARD LIMIT for Render Free
 
 
 @login_required
@@ -52,25 +48,9 @@ def chat_page(request, session_id):
                 .order_by("created_at")[:6]
             )
 
-            # 3️⃣ RAG (TIME-BOUND + SAFE)
+            # 3️⃣ RAG — TEMPORARILY DISABLED ON RENDER FREE
+            # (Codebase still has RAG, just not executed here)
             knowledge_text = ""
-            start = time.time()
-
-            try:
-                from rag.rag_utils import retrieve_knowledge
-
-                if time.time() - start < MAX_RAG_SECONDS:
-                    chunks = retrieve_knowledge(user_message, k=1)
-
-                    if (
-                        chunks
-                        and time.time() - start < MAX_RAG_SECONDS
-                    ):
-                        knowledge_text = chunks[0][:300]
-
-            except Exception:
-                # 🔕 Fail silently — never block chat
-                knowledge_text = ""
 
             # 4️⃣ Build LLM messages
             messages = [
@@ -80,7 +60,6 @@ def chat_page(request, session_id):
                         "You are a supportive mental wellness companion.\n"
                         "Speak calmly, warmly, and practically.\n"
                         "Focus primarily on the user's latest message.\n"
-                        "Use the provided mental health context only if relevant.\n"
                         "Do not give generic filler responses.\n"
                         "Do not analyze or label the user.\n"
                         "Do not give medical advice."
@@ -88,18 +67,16 @@ def chat_page(request, session_id):
                 }
             ]
 
-            if knowledge_text:
-                messages.append({
-                    "role": "system",
-                    "content": f"Relevant mental health context:\n{knowledge_text}"
-                })
+            # (RAG injection skipped intentionally)
 
+            # Conversation memory
             for msg in recent_messages:
                 messages.append({
                     "role": "assistant" if msg.role == "bot" else "user",
                     "content": msg.content
                 })
 
+            # Latest user message
             messages.append({
                 "role": "user",
                 "content": user_message
@@ -120,7 +97,7 @@ def chat_page(request, session_id):
 
             except Exception:
                 bot_reply = (
-                    "I’m here with you. I may be a bit slow right now, "
+                    "I’m here with you. I might be a bit slow right now, "
                     "but you can keep talking — I’m listening."
                 )
 
@@ -131,6 +108,7 @@ def chat_page(request, session_id):
                 content=bot_reply
             )
 
+            # Auto-set chat title
             if session.title == "New Chat":
                 session.title = user_message[:30]
                 session.save()
