@@ -5,7 +5,7 @@ gunicorn
 groq
 faiss-cpu
 sentence-transformers==2.7.0
-torch==2.1.2
+torch==2.5.1+cpu
 python-dotenv
 dj-database-url
 psycopg2-binary
