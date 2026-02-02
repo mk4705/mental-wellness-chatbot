@@ -1,25 +1,27 @@
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
 from django.views.decorators.http import require_POST
-from groq import Groq
 import os
+import time
 
 from .models import ChatSession, ChatMessage
 
-client = Groq(api_key=os.getenv("GROQ_API_KEY"))
+# 🔹 Lazy Groq client (IMPORTANT)
+_groq_client = None
 
-FORBIDDEN_OUTPUT_PATTERNS = [
-    "the user",
-    "the assistant",
-    "the response",
-    "it would be helpful",
-    "should provide",
-    "appears to be",
-    "they may be experiencing",
-    "in this situation",
-    "encourage them to",
-    "provide them with resources"
-]
+
+def get_groq_client():
+    global _groq_client
+    if _groq_client is None:
+        api_key = os.getenv("GROQ_API_KEY")
+        if not api_key:
+            raise RuntimeError("GROQ_API_KEY not set")
+        from groq import Groq
+        _groq_client = Groq(api_key=api_key)
+    return _groq_client
+
+
+MAX_RAG_SECONDS = 1.5  # HARD LIMIT for Render Free
 
 
 @login_required
@@ -50,14 +52,24 @@ def chat_page(request, session_id):
                 .order_by("created_at")[:6]
             )
 
-            # 3️⃣ RAG (LAZY IMPORT — THIS IS THE FIX)
+            # 3️⃣ RAG (TIME-BOUND + SAFE)
             knowledge_text = ""
+            start = time.time()
+
             try:
                 from rag.rag_utils import retrieve_knowledge
-                knowledge_chunks = retrieve_knowledge(user_message, k=1)
-                if knowledge_chunks:
-                    knowledge_text = knowledge_chunks[0][:400]
+
+                if time.time() - start < MAX_RAG_SECONDS:
+                    chunks = retrieve_knowledge(user_message, k=1)
+
+                    if (
+                        chunks
+                        and time.time() - start < MAX_RAG_SECONDS
+                    ):
+                        knowledge_text = chunks[0][:300]
+
             except Exception:
+                # 🔕 Fail silently — never block chat
                 knowledge_text = ""
 
             # 4️⃣ Build LLM messages
@@ -76,38 +88,40 @@ def chat_page(request, session_id):
                 }
             ]
 
-            # Inject RAG context
             if knowledge_text:
                 messages.append({
                     "role": "system",
                     "content": f"Relevant mental health context:\n{knowledge_text}"
                 })
 
-            # Conversation memory
             for msg in recent_messages:
                 messages.append({
                     "role": "assistant" if msg.role == "bot" else "user",
                     "content": msg.content
                 })
 
-            # Latest user message
             messages.append({
                 "role": "user",
                 "content": user_message
             })
 
-            # 5️⃣ LLM call
-            response = client.chat.completions.create(
-                model="openai/gpt-oss-20b",
-                messages=messages,
-                temperature=0.5,
-                max_tokens=400
-            )
+            # 5️⃣ LLM call (SAFE)
+            try:
+                client = get_groq_client()
 
-            bot_reply = response.choices[0].message.content.strip()
-            if not bot_reply:
+                response = client.chat.completions.create(
+                    model="openai/gpt-oss-20b",
+                    messages=messages,
+                    temperature=0.5,
+                    max_tokens=400
+                )
+
+                bot_reply = response.choices[0].message.content.strip()
+
+            except Exception:
                 bot_reply = (
-                    "I’m here with you. Take your time — what’s been on your mind lately?"
+                    "I’m here with you. I may be a bit slow right now, "
+                    "but you can keep talking — I’m listening."
                 )
 
             # 6️⃣ Save bot reply
@@ -117,7 +131,6 @@ def chat_page(request, session_id):
                 content=bot_reply
             )
 
-            # Auto-set chat title
             if session.title == "New Chat":
                 session.title = user_message[:30]
                 session.save()
