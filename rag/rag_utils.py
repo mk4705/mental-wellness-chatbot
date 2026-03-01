@@ -1,24 +1,38 @@
+import os
+import json
 import faiss
-import pickle
+import numpy as np
 from sentence_transformers import SentenceTransformer
 
-# Load once (important for performance)
-embedding_model = SentenceTransformer("all-MiniLM-L6-v2")
+# Paths
+BASE_DIR = os.path.dirname(__file__)
+INDEX_PATH = os.path.join(BASE_DIR, "index.faiss")
+METADATA_PATH = os.path.join(BASE_DIR, "metadata.json")
 
-index = faiss.read_index("rag/faiss.index")
-with open("rag/meta.pkl", "rb") as f:
-    metadata = pickle.load(f)
+# Load once at startup
+print("Loading FAISS index...")
+index = faiss.read_index(INDEX_PATH)
+
+print("Loading metadata...")
+with open(METADATA_PATH, "r", encoding="utf-8") as f:
+    metadata = json.load(f)
+
+print("Loading embedding model...")
+model = SentenceTransformer("all-MiniLM-L6-v2")
 
 def retrieve_knowledge(query, k=2):
     """
-    Retrieve top-k relevant knowledge chunks for a query
+    Returns top-k most relevant knowledge chunks.
     """
-    query_embedding = embedding_model.encode([query])
+
+    query_embedding = model.encode([query])
+    query_embedding = np.array(query_embedding).astype("float32")
+
     distances, indices = index.search(query_embedding, k)
 
     results = []
     for idx in indices[0]:
-        results.append(metadata[idx]["source"])
+        if idx < len(metadata):
+            results.append(metadata[idx]["content"])
 
     return results
-    

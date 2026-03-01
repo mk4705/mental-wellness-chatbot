@@ -48,9 +48,15 @@ def chat_page(request, session_id):
                 .order_by("created_at")[:6]
             )
 
-            # 3️⃣ RAG — TEMPORARILY DISABLED ON RENDER FREE
-            # (Codebase still has RAG, just not executed here)
+            # 3️⃣ Hybrid RAG (lightweight retrieval)
             knowledge_text = ""
+            try:
+                from rag.rag_utils import retrieve_knowledge
+                chunks = retrieve_knowledge(user_message, k=2)
+                if chunks:
+                    knowledge_text = "\n\n".join(chunks)
+            except Exception:
+                knowledge_text = ""
 
             # 4️⃣ Build LLM messages
             messages = [
@@ -60,6 +66,7 @@ def chat_page(request, session_id):
                         "You are a supportive mental wellness companion.\n"
                         "Speak calmly, warmly, and practically.\n"
                         "Focus primarily on the user's latest message.\n"
+                        "Use provided mental health context if relevant.\n"
                         "Do not give generic filler responses.\n"
                         "Do not analyze or label the user.\n"
                         "Do not give medical advice."
@@ -67,7 +74,12 @@ def chat_page(request, session_id):
                 }
             ]
 
-            # (RAG injection skipped intentionally)
+            # 🔹 Inject RAG context if available
+            if knowledge_text:
+                messages.append({
+                    "role": "system",
+                    "content": f"Relevant mental health context:\n{knowledge_text}"
+                })
 
             # Conversation memory
             for msg in recent_messages:
