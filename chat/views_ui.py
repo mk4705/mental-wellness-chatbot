@@ -65,8 +65,12 @@ def chat_page(request, session_id):
                     "content": (
                         "You are a supportive mental wellness companion.\n"
                         "Speak calmly, warmly, and practically.\n"
-                        "Focus primarily on the user's latest message.\n"
                         "Use provided mental health context if relevant.\n"
+                        "When presenting structured steps, format clearly using numbered lists.\n"
+                        "Avoid markdown tables.\n"
+                        "Keep formatting clean and readable.\n"
+                        "Use provided mental health context if relevant.\n"
+                        "Preserve structure from the provided context.\n"
                         "Do not give generic filler responses.\n"
                         "Do not analyze or label the user.\n"
                         "Do not give medical advice."
@@ -102,7 +106,7 @@ def chat_page(request, session_id):
                     model="openai/gpt-oss-20b",
                     messages=messages,
                     temperature=0.5,
-                    max_tokens=400
+                    max_tokens=900
                 )
 
                 bot_reply = response.choices[0].message.content.strip()
