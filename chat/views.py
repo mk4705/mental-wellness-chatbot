@@ -3,9 +3,10 @@ from rest_framework.response import Response
 from rest_framework import status
 from rest_framework.parsers import JSONParser, FormParser
 from .models import ChatMessage
-import ollama
 from rest_framework.permissions import IsAuthenticated
+import os
 
+USE_RAG = os.getenv("USE_RAG", "True") == "True"
 
 HIGH_RISK_KEYWORDS = [
     "suicide",

@@ -2,37 +2,56 @@ import os
 import json
 import faiss
 import numpy as np
-from sentence_transformers import SentenceTransformer
+import requests
 
-# Paths
-BASE_DIR = os.path.dirname(__file__)
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+
 INDEX_PATH = os.path.join(BASE_DIR, "index.faiss")
-METADATA_PATH = os.path.join(BASE_DIR, "metadata.json")
+META_PATH = os.path.join(BASE_DIR, "metadata.json")
 
-# Load once at startup
-print("Loading FAISS index...")
+# Load FAISS index once
 index = faiss.read_index(INDEX_PATH)
 
-print("Loading metadata...")
-with open(METADATA_PATH, "r", encoding="utf-8") as f:
+# Load metadata once
+with open(META_PATH, "r", encoding="utf-8") as f:
     metadata = json.load(f)
 
-print("Loading embedding model...")
-model = SentenceTransformer("all-MiniLM-L6-v2")
+HF_API_KEY = os.getenv("HF_API_KEY")
+
+EMBEDDING_API_URL = "https://api-inference.huggingface.co/pipeline/feature-extraction/sentence-transformers/all-MiniLM-L6-v2"
+
+headers = {
+    "Authorization": f"Bearer {HF_API_KEY}"
+}
+
+
+def embed_query(text):
+    response = requests.post(
+        EMBEDDING_API_URL,
+        headers=headers,
+        json={"inputs": text}
+    )
+
+    if response.status_code != 200:
+        raise RuntimeError("HF embedding API failed")
+
+    embedding = response.json()
+
+    # Convert to numpy array
+    return np.array(embedding, dtype="float32")
+
 
 def retrieve_knowledge(query, k=2):
-    """
-    Returns top-k most relevant knowledge chunks.
-    """
+    query_vector = embed_query(query)
 
-    query_embedding = model.encode([query])
-    query_embedding = np.array(query_embedding).astype("float32")
+    # FAISS expects 2D array
+    query_vector = np.expand_dims(query_vector, axis=0)
 
-    distances, indices = index.search(query_embedding, k)
+    distances, indices = index.search(query_vector, k)
 
     results = []
     for idx in indices[0]:
         if idx < len(metadata):
-            results.append(metadata[idx]["content"])
+            results.append(metadata[idx])
 
     return results
